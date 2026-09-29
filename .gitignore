@@ -1,0 +1,11 @@
+node_modules/
+.vite/
+.next/
+.env
+.env.*
+!.env.example
+dist/
+client/dist/
+server/.env
+npm-debug.log*
+.DS_Store
