@@ -105,7 +105,7 @@ router.post('/users', requireAuth, allowRoles('master'), async (req, res) => {
     if (await User.exists({ loginId })) return res.status(409).json({ message: 'User ID already exists' });
     const initials = String(body.name).split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase();
     const user = await User.create({
-      name: String(body.name).trim(), loginId, passwordHash: await hashPassword(password), role,
+      name: String(body.name).trim(), fatherName: String(body.fatherName || '').trim(), loginId, passwordHash: await hashPassword(password), role,
       mobile: String(body.mobile || '').trim(), email: String(body.email || '').trim().toLowerCase(),
       jobRole: String(body.jobRole || (role === 'labour' ? 'Labour' : 'Site Admin')).trim(),
       accountingCategories: role === 'admin' && Array.isArray(body.accountingCategories) ? [...new Set(body.accountingCategories.map(String))] : ['*'],
@@ -140,6 +140,7 @@ router.patch('/users/:id', requireAuth, allowRoles('master'), async (req, res) =
       user.loginId = loginId;
     }
     if (body.name !== undefined) user.name = String(body.name).trim();
+    if (body.fatherName !== undefined) user.fatherName = String(body.fatherName).trim();
     if (body.mobile !== undefined) user.mobile = String(body.mobile).trim();
     if (body.email !== undefined) user.email = String(body.email).trim().toLowerCase();
     if (body.jobRole !== undefined) user.jobRole = String(body.jobRole).trim();

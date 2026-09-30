@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const workerSchema = new mongoose.Schema({
   legacyId: { type: String, index: true, sparse: true },
   name: { type: String, required: true, trim: true, maxlength: 140 },
+  fatherName: { type: String, trim: true, maxlength: 140, default: '' },
   role: { type: String, trim: true, maxlength: 100, default: 'Labour' },
   mobile: { type: String, trim: true, maxlength: 30, default: '' },
   wage: { type: Number, min: 0, default: 0 },

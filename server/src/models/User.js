@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   legacyId: { type: String, index: true, sparse: true },
   name: { type: String, required: true, trim: true, maxlength: 120 },
+  fatherName: { type: String, trim: true, maxlength: 120, default: '' },
   loginId: { type: String, required: true, unique: true, uppercase: true, trim: true, maxlength: 80 },
   passwordHash: { type: String, required: true, select: false },
   role: { type: String, enum: ['master', 'admin', 'labour'], required: true, index: true },

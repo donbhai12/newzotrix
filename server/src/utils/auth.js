@@ -22,6 +22,7 @@ export function safeUser(user) {
   return {
     id: String(user._id),
     name: user.name,
+    fatherName: user.fatherName || '',
     loginId: user.loginId,
     role: user.role,
     mobile: user.mobile,

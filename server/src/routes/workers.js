@@ -40,7 +40,7 @@ router.post('/', allowRoles('master', 'admin'), async (req, res) => {
     if (b.projectId && !project) return res.status(400).json({ message: 'Selected project not found or not assigned to this admin' });
     if (req.user.role === 'admin' && req.user.accessControlEnabled === true && !b.projectId) return res.status(403).json({ message: 'Select an assigned project for this labour record' });
     const worker = await Worker.create({
-      name: String(b.name).trim(), role: String(b.role || 'Labour').trim(), mobile: String(b.mobile || '').trim(),
+      name: String(b.name).trim(), fatherName: String(b.fatherName || '').trim(), role: String(b.role || 'Labour').trim(), mobile: String(b.mobile || '').trim(),
       wage: Math.max(0, Number(b.wage || 0)), otRate: Math.max(0, Number(b.otRate || 0)), joining: String(b.joining || todayISO()),
       projectId: project?._id || null, status: b.status === 'Stopped' ? 'Stopped' : 'Active',
       stopDate: b.status === 'Stopped' ? String(b.stopDate || todayISO()) : '', stopReason: b.status === 'Stopped' ? String(b.stopReason || '') : '',
@@ -53,7 +53,7 @@ router.post('/', allowRoles('master', 'admin'), async (req, res) => {
       let loginId;
       do { loginId = `ZOTRIX-LAB-${randomBytes(4).toString('hex').toUpperCase()}`; } while (await User.exists({ loginId }));
       const password = randomBytes(12).toString('base64url');
-      const user = await User.create({ name: worker.name, loginId, passwordHash: await hashPassword(password), role: 'labour', mobile: worker.mobile, jobRole: worker.role, initials: worker.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase(), photoUrl: worker.photoUrl, workerId: worker._id, createdBy: req.user._id });
+      const user = await User.create({ name: worker.name, loginId, passwordHash: await hashPassword(password), role: 'labour', fatherName: worker.fatherName, mobile: worker.mobile, jobRole: worker.role, initials: worker.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase(), photoUrl: worker.photoUrl, workerId: worker._id, createdBy: req.user._id });
       credentials = { name: worker.name, loginId, password };
       worker._user = String(user._id);
       await worker.save();
@@ -77,7 +77,7 @@ router.patch('/:id', allowRoles('master', 'admin'), async (req, res) => {
     if (!canAccessWorker(req.user, nextWorker)) return res.status(403).json({ message: 'This labour record would leave your assigned access' });
     worker.projectId = project?._id || null;
   }
-  for (const f of ['name','role','mobile','joining','stopDate','stopReason','bankName','accountHolder','accountNo','ifsc','upiId','photoUrl']) if (b[f] !== undefined) worker[f] = String(b[f]);
+  for (const f of ['name','fatherName','role','mobile','joining','stopDate','stopReason','bankName','accountHolder','accountNo','ifsc','upiId','photoUrl']) if (b[f] !== undefined) worker[f] = String(b[f]);
   if (b.wage !== undefined) worker.wage = Math.max(0, Number(b.wage || 0));
   if (b.otRate !== undefined) worker.otRate = Math.max(0, Number(b.otRate || 0));
   if (b.status && ['Active','Stopped'].includes(b.status)) {
@@ -86,6 +86,7 @@ router.patch('/:id', allowRoles('master', 'admin'), async (req, res) => {
     else if (!worker.stopDate) worker.stopDate = todayISO();
   }
   await worker.save();
+  if (b.fatherName !== undefined) await User.updateOne({ workerId: worker._id }, { $set: { fatherName: worker.fatherName } });
 
   if (b.loginId || b.password || b.active !== undefined) {
     if (req.user.role !== 'master') return res.status(403).json({ message: 'Only Master can manage labour login accounts' });
@@ -93,7 +94,7 @@ router.patch('/:id', allowRoles('master', 'admin'), async (req, res) => {
     if (!account && b.loginId && b.password) {
       const loginId = String(b.loginId).trim().toUpperCase().replace(/\s+/g, '');
       if (await User.exists({ loginId })) return res.status(409).json({ message: 'Labour Login ID already exists' });
-      account = await User.create({ name: worker.name, loginId, passwordHash: await hashPassword(String(b.password)), role: 'labour', mobile: worker.mobile, jobRole: worker.role, initials: worker.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase(), workerId: worker._id, createdBy: req.user._id });
+      account = await User.create({ name: worker.name, loginId, passwordHash: await hashPassword(String(b.password)), role: 'labour', fatherName: worker.fatherName, mobile: worker.mobile, jobRole: worker.role, initials: worker.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase(), workerId: worker._id, createdBy: req.user._id });
     } else if (account) {
       if (b.loginId) {
         const loginId = String(b.loginId).trim().toUpperCase().replace(/\s+/g, '');
@@ -103,7 +104,7 @@ router.patch('/:id', allowRoles('master', 'admin'), async (req, res) => {
       }
       if (b.password) account.passwordHash = await hashPassword(String(b.password));
       if (b.active !== undefined) account.active = !!b.active;
-      account.name = worker.name; account.mobile = worker.mobile; account.jobRole = worker.role;
+      account.name = worker.name; account.fatherName = worker.fatherName; account.mobile = worker.mobile; account.jobRole = worker.role;
       await account.save();
     }
   }
@@ -119,12 +120,13 @@ router.patch('/:id', allowRoles('master', 'admin'), async (req, res) => {
       account.passwordHash = await hashPassword(password);
       account.active = true;
       account.name = worker.name;
+      account.fatherName = worker.fatherName;
       account.mobile = worker.mobile;
       account.jobRole = worker.role;
       account.photoUrl = worker.photoUrl;
       await account.save();
     } else {
-      account = await User.create({ name: worker.name, loginId, passwordHash: await hashPassword(password), role: 'labour', mobile: worker.mobile, jobRole: worker.role, initials: worker.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase(), photoUrl: worker.photoUrl, workerId: worker._id, createdBy: req.user._id });
+      account = await User.create({ name: worker.name, loginId, passwordHash: await hashPassword(password), role: 'labour', fatherName: worker.fatherName, mobile: worker.mobile, jobRole: worker.role, initials: worker.name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase(), photoUrl: worker.photoUrl, workerId: worker._id, createdBy: req.user._id });
     }
     req.credentials = { name: worker.name, loginId: account.loginId, password };
   }

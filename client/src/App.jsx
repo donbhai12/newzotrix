@@ -70,10 +70,12 @@ function App(){
     projects:<ProjectsView projects={projects} workers={workers} expenses={expenses} canEdit={user.role==='master'} onRefresh={async()=>{await loadProjects();await loadDashboard()}} openModal={setModal} toast={toast}/>,
     labour:<LabourView workers={workers} projects={projects} expenses={expenses} canEdit={user.role==='master'} onRefresh={async()=>{await loadWorkers();await loadExpenses();await loadDashboard()}} openModal={setModal} toast={toast}/>,
     expenses:<ExpensesView expenses={expenses} projects={projects} workers={workers} users={users} settings={user.role==='admin'&&!user.accountingCategories?.includes('*')?{...settings,categories:(settings?.categories||[]).filter(category=>user.accountingCategories?.includes(category))}:settings} canEdit={user.role==='master'} onRefresh={async()=>{await loadExpenses();await loadDashboard()}} openModal={setModal} toast={toast}/>,
+    notes:<PersonalNotesView toast={toast}/>,
     master:<MasterView users={users} workers={workers} settings={settings} projects={projects} onRefresh={async()=>{await loadUsers();await loadWorkers();await loadSettings();await loadDashboard()}} openModal={setModal} toast={toast}/>
   };
 
   return <div className="app-shell">
+    {sidebarOpen&&<button className="sidebar-backdrop" aria-label="Close navigation" onClick={()=>setSidebarOpen(false)}/>} 
     <Sidebar view={view} setView={(v)=>{setView(v);setSidebarOpen(false)}} user={user} settings={settings} open={sidebarOpen} onClose={()=>setSidebarOpen(false)} onLogout={logout}/>
     <main className="main-area">
       <Topbar user={user} settings={settings} searchRef={searchRef} globalSearch={globalSearch} setGlobalSearch={(q)=>{setGlobalSearch(q); if(q.trim()){
@@ -131,23 +133,27 @@ function Icon({name}){
     menu:<><path d="M4 7h16M4 12h16M4 17h16"/></>,
     chevron:<path d="m9 6 6 6-6 6"/>,
     refresh:<><path d="M20 11a8 8 0 0 0-14.7-4L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14.7 4L20 15"/><path d="M20 20v-5h-5"/></>,
-    plus:<><path d="M12 5v14M5 12h14"/></>
+    plus:<><path d="M12 5v14M5 12h14"/></>,
+    note:<><path d="M5 3h10l4 4v14H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M7 12h10M7 16h7"/></>,
+    pin:<><path d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-7-2 2-2h5l4-4z"/><path d="m4 20 5-5"/></>
   };
   return <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]||paths.grid}</svg>;
 }
 function Sidebar({view,setView,user,settings,open,onClose,onLogout}){const scope=user.role==='admin'&&user.accessControlEnabled?'Assigned workspace':'Full workspace';return <aside className={`sidebar ${open?'open':''}`}>
   <div className="sidebar-inner">
     <div className="side-brand"><div className="brand-mark small logo-image"><img src={settings?.logoUrl||LOGO_SRC} alt="Zotrix Research Private Ltd logo" /></div><div><h2>{settings?.businessName||'Zotrix Research Private Ltd'}</h2><span>Operations Workspace</span></div></div>
+    <button className="btn light wide mobile-sidebar-logout" onClick={()=>{onLogout();onClose()}}>Logout <Icon name="chevron"/></button>
     <div className="workspace-box"><div className="workspace-label"><span className="live-dot"/> {scope}</div><b>{user.name}</b><span>{user.role==='master'?'Master Admin':user.role==='admin'?'Administrator':'Labour'}</span></div>
     <div className="nav-section-label">Workspace</div><nav className="nav-list">
       <NavBtn icon="grid" label="Dashboard" active={view==='dashboard'} onClick={()=>setView('dashboard')}/>
       <NavBtn icon="folder" label="Projects" active={view==='projects'} onClick={()=>setView('projects')}/>
       <NavBtn icon="users" label="Labour" active={view==='labour'} onClick={()=>setView('labour')}/>
       {canViewAccounting(user)&&<NavBtn icon="wallet" label="Money & Expenses" active={view==='expenses'} onClick={()=>setView('expenses')}/ >}
+      {user.role==='admin'&&<NavBtn icon="note" label="My Notes" active={view==='notes'} onClick={()=>setView('notes')}/> }
       {user.role==='master'&&<><div className="nav-section-label nav-section-gap">Administration</div><NavBtn icon="shield" label="Master Control" active={view==='master'} onClick={()=>setView('master')}/></>} 
     </nav>
   </div>
-  <div className="side-bottom"><button className="btn light wide" onClick={onLogout}>Logout <Icon name="chevron"/></button></div>
+  <div className="side-bottom"><button className="btn light wide" onClick={()=>{onLogout();onClose()}}>Logout <Icon name="chevron"/></button></div>
   <button className="sidebar-close" aria-label="Close navigation" onClick={onClose}>×</button>
 </aside>}
 function NavBtn({icon,label,active,onClick}){return <button className={`nav-btn ${active?'active':''}`} onClick={onClick}><span className="nav-icon"><Icon name={icon}/></span><b>{label}</b>{active&&<i className="nav-active-dot"/>}</button>}
@@ -182,7 +188,7 @@ function Dashboard({user,settings,data,projects,workers,expenses,onRefresh,onVie
   const {kpi,trend,category,projectSpend,todayRows,recent}=data;
   const trendMax=Math.max(1,...trend.map(x=>x.total)); const cats=Object.entries(category||{}).sort((a,b)=>b[1]-a[1]).slice(0,5); const catTotal=cats.reduce((a,[,v])=>a+v,0)||1;
   return <div>
-    <DashboardWelcome user={user} settings={settings} projects={projects} workers={workers} onView={onView} canEditProjects={canEditProjects} canViewExpenses={canViewExpenses}/>
+    <DashboardWelcome user={user} settings={settings} projects={projects} workers={workers} onView={onView} canEditProjects={canEditProjects} canViewExpenses={canViewExpenses}/>{user.role==='admin'&&<PersonalNotesBanner onOpen={()=>onView('notes')}/>}
     <div className="dashboard-section-head"><div><span className="eyebrow dark">Portfolio overview</span><h2>Operations at a glance</h2></div><button className="btn soft" onClick={onRefresh}>Refresh data</button></div>
     <div className="kpi-grid"><Kpi label="Projects" value={kpi.projects} sub="Current portfolio" className="accent-green"/><Kpi label="Active Labour" value={kpi.activeWorkers} sub={`${workers.length} total records`} className="accent-cyan"/><Kpi label="Money Out" value={money(kpi.totalExpense)} sub="Last 30 days" className="accent-red"/><Kpi label="Labour Paid" value={money(kpi.totalLabourPaid)} sub="Recorded payments" className="accent-gold"/><Kpi label="Labour Due" value={money(kpi.labourDue)} sub="Earned minus paid" className="accent-blue"/></div>
     <div className="two-col top-gap"><div className="card chart-card"><SectionTitle title="Expense Trend" badge="Last 14 days"/><div className="bar-chart">{trend.map(x=><div className="bar-col" key={x.date}><div className="bar-wrap"><div className="bar" style={{height:`${Math.max(4,x.total/trendMax*100)}%`}} title={`${fmtDate(x.date)} ${money(x.total)}`}/></div><small>{x.date.slice(8)}</small></div>)}</div></div>
@@ -195,6 +201,26 @@ function Dashboard({user,settings,data,projects,workers,expenses,onRefresh,onVie
 function LabourStrength({workers,projects}){return <div className="card"><SectionTitle title="Labour Strength by Project" badge="Active"/>{projects.map(p=>{const n=workers.filter(w=>String(w.projectId)===String(p._id)&&w.status==='Active').length;return <div className="stat-line" key={p._id}><span><b>{p.name}</b><small>{n} active labour</small></span><span className="stat-value">{n}</span></div>})}</div>}
 function MoneyTypeChart({expenses}){const types={};expenses.forEach(e=>types[e.type]=(types[e.type]||0)+Number(e.amount||0));const rows=Object.entries(types).sort((a,b)=>b[1]-a[1]);const max=Math.max(1,...rows.map(x=>x[1]));return <div className="card"><SectionTitle title="Money Out by Type" badge="All entries"/><div className="hbar-list">{rows.map(([k,v])=><div key={k}><div><span>{k}</span><b>{money(v)}</b></div><i style={{width:`${v/max*100}%`}}/></div>)}</div></div>}
 function TodayAttendance({rows=[]}){const counts={P:rows.filter(x=>x.status==='P').length,H:rows.filter(x=>x.status==='H').length,A:rows.filter(x=>x.status==='A').length};return <div className="card"><SectionTitle title="Today's Attendance" badge="Auto Present"/><div className="attendance-summary"><div className="att-card p"><b>{counts.P}</b><span>Present</span></div><div className="att-card h"><b>{counts.H}</b><span>Half</span></div><div className="att-card a"><b>{counts.A}</b><span>Absent</span></div></div><div className="compact-list">{rows.slice(0,8).map(r=><div key={String(r.workerId)}><span>{r.name}</span><span className={`tag ${r.status==='P'?'green':r.status==='H'?'amber':r.status==='A'?'red':'light'}`}>{statusText[r.status]}</span></div>)}</div></div>}
+
+function PersonalNotesBanner({onOpen}){return <button className="personal-notes-banner" onClick={onOpen}><span className="notes-banner-mark"><Icon name="note"/></span><span className="notes-banner-copy"><small>YOUR PRIVATE SPACE</small><b>Keep a note for yourself</b><em>Personal reminders and ideas stay separate from project records and visible only to you.</em></span><span className="notes-banner-action">Open My Notes <Icon name="chevron"/></span></button>}
+
+function PersonalNotesView({toast}){
+  const [notes,setNotes]=useState([]),[query,setQuery]=useState(''),[editor,setEditor]=useState(null),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false);
+  async function load(){try{setNotes(await api('/personal-notes'))}catch(error){toast(error.message)}finally{setLoading(false)}}
+  useEffect(()=>{load()},[]);
+  const startNew=()=>setEditor({title:'',content:'',color:'mint',pinned:false});
+  const startEdit=note=>setEditor({...note});
+  async function save(event){event.preventDefault();setSaving(true);try{const saved=await api(editor._id?'/personal-notes/'+editor._id:'/personal-notes',{method:editor._id?'PATCH':'POST',body:JSON.stringify({title:editor.title,content:editor.content,color:editor.color,pinned:editor.pinned})});setNotes(current=>editor._id?current.map(note=>note._id===saved._id?saved:note):[saved,...current]);setEditor(null);toast(editor._id?'Note updated':'Personal note saved')}catch(error){toast(error.message)}finally{setSaving(false)}}
+  async function togglePin(note){try{const saved=await api('/personal-notes/'+note._id,{method:'PATCH',body:JSON.stringify({pinned:!note.pinned})});setNotes(current=>current.map(item=>item._id===saved._id?saved:item))}catch(error){toast(error.message)}}
+  async function remove(note){if(!window.confirm('Delete "'+note.title+'"?'))return;try{await api('/personal-notes/'+note._id,{method:'DELETE'});setNotes(current=>current.filter(item=>item._id!==note._id));toast('Note deleted')}catch(error){toast(error.message)}}
+  const shown=notes.filter(note=>!query||(note.title+' '+note.content).toLowerCase().includes(query.toLowerCase()));
+  return <div className="personal-notes-page"><PageHead title="My Notes" subtitle="A private space for your own reminders, ideas and follow-ups." actions={<button className="btn primary" onClick={startNew}><Icon name="plus"/> New note</button>}/>
+    <div className="notes-private-callout"><span className="notes-lock"><Icon name="shield"/></span><span><b>Just for you</b><small>These notes belong to your admin ID. Other admins and project members cannot see them.</small></span><span className="notes-private-tag">PRIVATE</span></div>
+    {editor&&<form className={'note-editor note-'+editor.color} onSubmit={save}><div className="note-editor-head"><div><span className="eyebrow dark">{editor._id?'EDIT NOTE':'QUICK CAPTURE'}</span><b>{editor._id?'Update your note':'Get it out of your head'}</b></div><button className="close-btn" type="button" aria-label="Close editor" onClick={()=>setEditor(null)}>?</button></div><input className="note-title-input" autoFocus maxLength="120" value={editor.title} onChange={event=>setEditor(current=>({...current,title:event.target.value}))} placeholder="Give this note a title"/><textarea maxLength="5000" value={editor.content} onChange={event=>setEditor(current=>({...current,content:event.target.value}))} placeholder="Write a reminder, idea or follow-up..."/><div className="note-editor-tools"><div className="note-color-picker" aria-label="Note color">{['mint','gold','blue','rose','violet'].map(color=><button key={color} type="button" aria-label={color+' note color'} aria-pressed={editor.color===color} className={'note-color-dot '+color+(editor.color===color?' selected':'')} onClick={()=>setEditor(current=>({...current,color}))}/>)}</div><label className="note-pin-toggle"><input type="checkbox" checked={editor.pinned} onChange={event=>setEditor(current=>({...current,pinned:event.target.checked}))}/> Pin this note</label><div className="note-editor-actions"><button type="button" className="btn light" onClick={()=>setEditor(null)}>Cancel</button><button className="btn primary" disabled={saving}>{saving?'Saving...':'Save note'}</button></div></div></form>}
+    <div className="notes-toolbar"><div><span className="eyebrow dark">YOUR NOTEBOOK</span><h2>{notes.length?notes.length+' personal note'+(notes.length===1?'':'s'):'Start with one small note'}</h2></div><label className="notes-search"><Icon name="search"/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search your notes" aria-label="Search your personal notes"/></label></div>
+    {loading?<SectionLoader/>:shown.length?<div className="personal-notes-grid">{shown.map(note=><article key={note._id} className={'personal-note-card note-'+note.color+(note.pinned?' pinned':'')}><div className="personal-note-top"><span className="note-pin-label">{note.pinned?'PINNED':'PERSONAL'}</span><button className={'note-pin-button'+(note.pinned?' active':'')} aria-label={note.pinned?'Unpin note':'Pin note'} onClick={()=>togglePin(note)} title={note.pinned?'Unpin note':'Pin note'}><Icon name="pin"/></button></div><h3>{note.title}</h3><p>{note.content||'No extra details yet.'}</p><footer><small>Updated {new Date(note.updatedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</small><span><button onClick={()=>startEdit(note)}>Edit</button><button onClick={()=>remove(note)}>Delete</button></span></footer></article>)}</div>:<div className="notes-empty"><span className="notes-empty-icon"><Icon name="note"/></span><b>{query?'No notes match that search':'Your private notebook is ready'}</b><p>{query?'Try another word or clear your search.':'Capture a reminder, a personal follow-up or an idea you want to come back to.'}</p>{!query&&<button className="btn primary" onClick={startNew}><Icon name="plus"/> Write your first note</button>}</div>}
+  </div>
+}
 
 function ProjectsView({projects,workers,expenses,onRefresh,openModal,toast,canEdit}){
   const [q,setQ]=useState(''), [status,setStatus]=useState('all'), [selected,setSelected]=useState(null);
@@ -329,7 +355,7 @@ function WorkerModal({item,allowLogin,user,projects,close,onSaved,toast}){
   const worker=item||{};
   const canManageLogin=user.role==='master'&&allowLogin;
   const [createLogin,setCreateLogin]=useState(!item);
-  const [form,setForm]=useState({name:worker.name||'',role:worker.role||'Labour',mobile:worker.mobile||'',wage:worker.wage??0,otRate:worker.otRate??0,joining:worker.joining||todayISO(),projectId:worker.projectId?._id||worker.projectId||'',status:worker.status||'Active',stopDate:worker.stopDate||'',stopReason:worker.stopReason||'',bankName:worker.bankName||'',accountHolder:worker.accountHolder||'',accountNo:worker.accountNo||'',ifsc:worker.ifsc||'',upiId:worker.upiId||'',photoUrl:worker.photoUrl||''});
+  const [form,setForm]=useState({name:worker.name||'',fatherName:worker.fatherName||'',role:worker.role||'Labour',mobile:worker.mobile||'',wage:worker.wage??0,otRate:worker.otRate??0,joining:worker.joining||todayISO(),projectId:worker.projectId?._id||worker.projectId||'',status:worker.status||'Active',stopDate:worker.stopDate||'',stopReason:worker.stopReason||'',bankName:worker.bankName||'',accountHolder:worker.accountHolder||'',accountNo:worker.accountNo||'',ifsc:worker.ifsc||'',upiId:worker.upiId||'',photoUrl:worker.photoUrl||''});
   const set=(key,value)=>setForm(current=>({...current,[key]:value}));
   async function save(){
     try{
@@ -339,7 +365,7 @@ function WorkerModal({item,allowLogin,user,projects,close,onSaved,toast}){
     }catch(error){toast(error.message)}
   }
   return <Modal title={item?'Edit Labour':'Add Labour'} close={close} wide><div className="form-grid">
-    {[['name','Full Name','text'],['role','Role / Category','text'],['mobile','Mobile','tel'],['wage','Wage / Day','number'],['otRate','OT Rate / Hour','number'],['joining','Joining Date','date']].map(([key,label,type])=><div className="field" key={key}><label>{label}</label><input type={type} value={form[key]} onChange={event=>set(key,event.target.value)}/></div>)}
+    {[['name','Full Name','text'],['fatherName','Father Name','text'],['role','Role / Category','text'],['mobile','Mobile','tel'],['wage','Wage / Day','number'],['otRate','OT Rate / Hour','number'],['joining','Joining Date','date']].map(([key,label,type])=><div className="field" key={key}><label>{label}</label><input type={type} value={form[key]} onChange={event=>set(key,event.target.value)}/></div>)}
     <div className="field"><label>Project</label><select value={form.projectId} onChange={event=>set('projectId',event.target.value)}><option value="">- Unassigned -</option>{projects.map(project=><option key={project._id} value={project._id}>{project.name}</option>)}</select></div>
     <div className="field"><label>Status</label><select value={form.status} onChange={event=>set('status',event.target.value)}><option>Active</option><option>Stopped</option></select></div>
     {[['stopDate','Stop Date','date'],['stopReason','Stop Reason','text'],['bankName','Bank Name','text'],['accountHolder','Account Holder','text'],['accountNo','Account Number','text'],['ifsc','IFSC','text'],['upiId','UPI ID','text'],['photoUrl','Photo URL','url']].map(([key,label,type])=><div className="field" key={key}><label>{label}</label><input type={type} value={form[key]} onChange={event=>set(key,event.target.value)}/></div>)}
@@ -355,7 +381,7 @@ function LedgerModal({worker,close,toast}){const [data,setData]=useState(null),[
 
 function UserModal({item,role,settings,projects=[],workers=[],close,onSaved,toast}){
   const account=item||{};
-  const [form,setForm]=useState({name:account.name||'',loginId:account.loginId||'',mobile:account.mobile||'',email:account.email||'',jobRole:account.jobRole||'Site Admin',password:''});
+  const [form,setForm]=useState({name:account.name||'',fatherName:account.fatherName||'',loginId:account.loginId||'',mobile:account.mobile||'',email:account.email||'',jobRole:account.jobRole||'Site Admin',password:''});
   const initialCategories=account.accountingCategories||['*'];
   const [fullAccounting,setFullAccounting]=useState(initialCategories.includes('*'));
   const [accountingCategories,setAccountingCategories]=useState(initialCategories.includes('*')?[]:initialCategories);
@@ -381,8 +407,8 @@ function UserModal({item,role,settings,projects=[],workers=[],close,onSaved,toas
       await onSaved();
     }catch(error){toast(error.message)}
   }
-  return <Modal title={`${item?'Edit':'Add'} ${role==='labour'?'Labour Account':'Administrator'}`} close={close}><div className="form-grid">
-    <div className="field"><label>Full Name</label><input value={form.name} onChange={event=>set('name',event.target.value)}/></div>
+  return <Modal title={`${item?'Edit':'Add'} ${role==='labour'?'Labour Account':'Administrator'}`} close={close}><div className="account-form-shell"><div className="account-form-hero"><span className="eyebrow dark">Account profile</span><b>{item ? "Keep account details up to date" : "Set up a new workspace account"}</b><small>Enter the person details and secure sign-in information.</small></div><div className="form-grid account-form-grid">
+    <div className="field"><label>Full Name</label><input autoComplete="name" value={form.name} onChange={event=>set('name',event.target.value)}/></div><div className="field"><label>Father Name</label><input value={form.fatherName} onChange={event=>set('fatherName',event.target.value)} placeholder="Enter father name"/></div>
     <div className="field"><label>User ID</label><input value={form.loginId} onChange={event=>set('loginId',event.target.value.toUpperCase())}/></div>
     <div className="field"><label>Mobile</label><input value={form.mobile} onChange={event=>set('mobile',event.target.value)}/></div>
     <div className="field"><label>Email</label><input type="email" value={form.email} onChange={event=>set('email',event.target.value)}/></div>
@@ -397,7 +423,7 @@ function UserModal({item,role,settings,projects=[],workers=[],close,onSaved,toas
       </>}
       <div className="form-divider"><span>Accounting visibility</span></div><label className="permission-option form-full"><input type="checkbox" checked={fullAccounting} onChange={event=>setFullAccounting(event.target.checked)}/><span><b>All accounting categories</b><small>Turn off to choose categories below.</small></span></label>{!fullAccounting&&(settings?.categories||[]).map(category=><label className="permission-option" key={category}><input type="checkbox" checked={accountingCategories.includes(category)} onChange={event=>setAccountingCategories(current=>event.target.checked?[...current,category]:current.filter(value=>value!==category))}/><span>{category}</span></label>)}
     </>}
-  </div><FormActions close={close} save={save} label={item?'Save Account':'Create Account'}/></Modal>;
+  </div></div><FormActions close={close} save={save} label={item?'Save Account':'Create Account'}/></Modal>;
 }
 function ProfileModal({user,close,onSaved,toast}){
   const [form,setForm]=useState({name:user.name||'',mobile:user.mobile||'',email:user.email||'',jobRole:user.jobRole||'',photoUrl:user.photoUrl||''});

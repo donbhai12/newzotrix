@@ -12,6 +12,7 @@ import expenseRoutes from './routes/expenses.js';
 import dashboardRoutes from './routes/dashboard.js';
 import settingsRoutes from './routes/settings.js';
 import migrationRoutes from './routes/migration.js';
+import personalNoteRoutes from './routes/personalNotes.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -51,6 +52,7 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/migration', migrationRoutes);
+app.use('/api/personal-notes', personalNoteRoutes);
 
 app.use((req, res) => res.status(404).json({ message: `Route not found: ${req.method} ${req.path}` }));
 app.use((error, _req, res, _next) => {
