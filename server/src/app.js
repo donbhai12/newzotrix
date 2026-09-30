@@ -26,6 +26,16 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use((req, res, next) => {
+  if ((typeof req.body === 'string' || Buffer.isBuffer(req.body)) && req.is('application/json')) {
+    try {
+      req.body = JSON.parse(Buffer.isBuffer(req.body) ? req.body.toString('utf8') : req.body);
+    } catch {
+      return res.status(400).json({ message: 'Invalid JSON body' });
+    }
+  }
+  next();
+});
 app.use(morgan(config.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });

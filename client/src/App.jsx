@@ -94,6 +94,7 @@ function LoginScreen({onLogin,toast}){
   const [setup,setSetup]=useState(true), [id,setId]=useState(''), [password,setPassword]=useState(''), [name,setName]=useState('Master Owner'), [setupKey,setSetupKey]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
   const [setupAvailable,setSetupAvailable]=useState(true), [setupStatusError,setSetupStatusError]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
+  const [showSetupKey,setShowSetupKey]=useState(false);
   useEffect(()=>{api('/auth/setup-status').then(result=>{setSetupAvailable(result.setupAvailable);setSetup(result.setupAvailable);setSetupStatusError(false)}).catch(()=>{setSetupAvailable(true);setSetup(true);setSetupStatusError(true)}); api('/settings/public').then(setBranding).catch(()=>{})},[]);
   async function submit(e){e.preventDefault();setBusy(true);setError('');try{
     const data=setup ? await api('/auth/bootstrap',{method:'POST',body:JSON.stringify({setupKey,name,loginId:id,password})}) : await api('/auth/login',{method:'POST',body:JSON.stringify({loginId:id,password})});
@@ -106,7 +107,7 @@ function LoginScreen({onLogin,toast}){
       {setup&&<div className="field"><label>Your Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Master Owner"/></div>}
       <div className="field"><label>User ID</label><input value={id} onChange={e=>setId(e.target.value.toUpperCase())} placeholder="User ID" autoComplete="username"/></div>
       <div className="field"><label htmlFor="login-password">Password</label><div className="password-input-wrap"><input id="login-password" type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" autoComplete={setup?'new-password':'current-password'}/><button className="password-visibility" type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword}><Icon name={showPassword?'eyeOff':'eye'}/></button></div></div>
-      {setup&&<div className="field"><label>Setup Key</label><input type="password" value={setupKey} onChange={e=>setSetupKey(e.target.value)} placeholder="SETUP_KEY from server"/></div>}
+      {setup&&<div className="field"><label htmlFor="setup-key">Setup Key</label><div className="password-input-wrap"><input id="setup-key" type={showSetupKey?'text':'password'} value={setupKey} onChange={e=>setSetupKey(e.target.value)} placeholder="SETUP_KEY from server" autoComplete="off"/><button className="password-visibility" type="button" onClick={()=>setShowSetupKey(value=>!value)} aria-label={showSetupKey?'Hide setup key':'Show setup key'} aria-pressed={showSetupKey}><Icon name={showSetupKey?'eyeOff':'eye'}/></button></div></div>}
       {setupStatusError&&<div className="setup-status-warning" role="alert">Could not verify setup status. Check the database connection; the server will only create a Master if one does not already exist.</div>}
       {error&&<div className="error-box">{error}</div>}
       <button className="btn primary wide" disabled={busy}>{busy?'Please wait-':setup?'Create Master & Continue':'Sign In'} <b>-&gt;</b></button>

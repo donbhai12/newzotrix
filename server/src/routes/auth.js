@@ -20,7 +20,8 @@ router.get('/setup-status', async (_req, res) => {
 router.post('/bootstrap', async (req, res) => {
   try {
     const { setupKey, name, loginId, password } = req.body || {};
-    if (!config.setupKey || String(setupKey || '').trim() !== config.setupKey) return res.status(403).json({ message: 'Invalid setup key' });
+    const submittedKey = String(setupKey || '').trim();
+    if (!config.setupKey || submittedKey !== config.setupKey) return res.status(403).json({ message: 'Invalid setup key' });
     if (await User.exists({ role: 'master' })) return res.status(409).json({ message: 'Master account already exists. Use login instead.' });
     const normalizedId = String(loginId || '').trim().toUpperCase().replace(/\s+/g, '');
     if (!normalizedId || normalizedId.length < 3) return res.status(400).json({ message: 'Master User ID must be at least 3 characters' });
