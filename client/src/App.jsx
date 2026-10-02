@@ -93,31 +93,41 @@ function App(){
 
 function LoginScreen({onLogin,toast}){
   const [branding,setBranding]=useState({});
-  const [setup,setSetup]=useState(true), [id,setId]=useState(''), [password,setPassword]=useState(''), [name,setName]=useState('Master Owner'), [setupKey,setSetupKey]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
-  const [setupAvailable,setSetupAvailable]=useState(true), [setupStatusError,setSetupStatusError]=useState(false);
+  const [setup,setSetup]=useState(false), [id,setId]=useState(''), [password,setPassword]=useState(''), [name,setName]=useState('Master Owner'), [setupKey,setSetupKey]=useState(''), [busy,setBusy]=useState(false), [error,setError]=useState('');
+  const [setupAvailable,setSetupAvailable]=useState(false), [setupStatusError,setSetupStatusError]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
   const [showSetupKey,setShowSetupKey]=useState(false);
-  useEffect(()=>{api('/auth/setup-status').then(result=>{setSetupAvailable(result.setupAvailable);setSetup(result.setupAvailable);setSetupStatusError(false)}).catch(()=>{setSetupAvailable(true);setSetup(true);setSetupStatusError(true)}); api('/settings/public').then(setBranding).catch(()=>{})},[]);
+  useEffect(()=>{api('/auth/setup-status').then(result=>{setSetupAvailable(result.setupAvailable);setSetup(result.setupAvailable);setSetupStatusError(false)}).catch(()=>setSetupStatusError(true)); api('/settings/public').then(setBranding).catch(()=>{})},[]);
   async function submit(e){e.preventDefault();setBusy(true);setError('');try{
     const data=setup ? await api('/auth/bootstrap',{method:'POST',body:JSON.stringify({setupKey,name,loginId:id,password})}) : await api('/auth/login',{method:'POST',body:JSON.stringify({loginId:id,password})});
     if(setup)setSetupAvailable(false); onLogin(data); toast(setup?'Master account created':'Signed in');
   }catch(err){setError(err.message)}finally{setBusy(false)}}
-  return <div className="login-screen"><div className="tri-line"/><div className="login-glow one"/><div className="login-glow two"/>
-    <form className="login-box" onSubmit={submit}>
-      <div className="brand-row"><div className="brand-mark logo-image"><img src={branding.logoUrl||LOGO_SRC} alt="Zotrix Research Private Ltd logo" /></div><div><h1>Zotrix Research Private Ltd</h1><small>Project Operations</small></div></div>
-      <div className="chakra login-logo-hero"><img src={branding.logoUrl||LOGO_SRC} alt="Zotrix Research Private Ltd logo" /></div><h2>{setup?'First-time Setup':'Welcome Back'}</h2><p className="muted center">{setup?'Create the one Master account for this system.':'Sign in to continue to your workspace.'}</p>
-      {setup&&<div className="field"><label>Your Name</label><input value={name} onChange={e=>setName(e.target.value)} placeholder="Master Owner"/></div>}
-      <div className="field"><label>User ID</label><input value={id} onChange={e=>setId(e.target.value.toUpperCase())} placeholder="User ID" autoComplete="username"/></div>
-      <div className="field"><label htmlFor="login-password">Password</label><div className="password-input-wrap"><input id="login-password" type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" autoComplete={setup?'new-password':'current-password'}/><button className="password-visibility" type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword}><Icon name={showPassword?'eyeOff':'eye'}/></button></div></div>
-      {setup&&<div className="field"><label htmlFor="setup-key">Setup Key</label><div className="password-input-wrap"><input id="setup-key" type={showSetupKey?'text':'password'} value={setupKey} onChange={e=>setSetupKey(e.target.value)} placeholder="SETUP_KEY from server" autoComplete="off"/><button className="password-visibility" type="button" onClick={()=>setShowSetupKey(value=>!value)} aria-label={showSetupKey?'Hide setup key':'Show setup key'} aria-pressed={showSetupKey}><Icon name={showSetupKey?'eyeOff':'eye'}/></button></div></div>}
-      {setupStatusError&&<div className="setup-status-warning" role="alert">Could not verify setup status. Check the database connection; the server will only create a Master if one does not already exist.</div>}
-      {error&&<div className="error-box">{error}</div>}
-      <button className="btn primary wide" disabled={busy}>{busy?'Please wait-':setup?'Create Master & Continue':'Sign In'} <b>-&gt;</b></button>
-      {!setup&&setupAvailable&&<button type="button" className="ghost-link" onClick={()=>setSetup(true)}>First time? Set up Master account</button>}
-      {setup&&<button type="button" className="ghost-link" onClick={()=>setSetup(false)}>Back to sign in</button>}
-    </form>
-    <div className="login-footer">Zotrix Research Private Ltd - secure workspace</div>
-  </div>
+  return <main className="login-screen">
+    <section className="login-brand-panel" aria-label="Zotrix Research Private Ltd">
+      <div className="login-brand-top"><span className="login-brand-dot"/> PROJECT OPERATIONS</div>
+      <div className="login-brand-visual"><span className="login-brand-orbit"/><img src={branding.logoUrl||LOGO_SRC} alt="Zotrix Research Private Ltd logo" /></div>
+      <div className="login-brand-bottom"><span className="login-brand-eyebrow">RESEARCH TODAY. A BETTER TOMORROW.</span><h1>Ideas, built into progress.</h1><p>A considered workspace for the work ahead.</p></div>
+      <div className="login-brand-footer"><span>ZOTRIX RESEARCH PRIVATE LTD</span><span>WORKSPACE ACCESS</span></div>
+    </section>
+    <section className="login-form-panel">
+      <div className="login-form-shell">
+        <div className="login-form-kicker"><Icon name="shield"/> SECURE WORKSPACE</div>
+        <form className="login-box" onSubmit={submit}>
+          <div className="login-form-heading"><h2>{setup?'Set up your workspace':'Welcome back'}</h2><p className="muted">{setup?'Create the master account to get started.':'Sign in to continue to your workspace.'}</p></div>
+          {setup&&<div className="field"><label htmlFor="login-name">Your name</label><input id="login-name" value={name} onChange={e=>setName(e.target.value)} placeholder="Master Owner" autoComplete="name"/></div>}
+          <div className="field"><label htmlFor="login-id">User ID</label><input id="login-id" value={id} onChange={e=>setId(e.target.value.toUpperCase())} placeholder="Enter your user ID" autoComplete="username"/></div>
+          <div className="field"><label htmlFor="login-password">Password</label><div className="password-input-wrap"><input id="login-password" type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter your password" autoComplete={setup?'new-password':'current-password'}/><button className="password-visibility" type="button" onClick={()=>setShowPassword(value=>!value)} aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword}><Icon name={showPassword?'eyeOff':'eye'}/></button></div></div>
+          {setup&&<div className="field"><label htmlFor="setup-key">Setup key</label><div className="password-input-wrap"><input id="setup-key" type={showSetupKey?'text':'password'} value={setupKey} onChange={e=>setSetupKey(e.target.value)} placeholder="Enter the server setup key" autoComplete="off"/><button className="password-visibility" type="button" onClick={()=>setShowSetupKey(value=>!value)} aria-label={showSetupKey?'Hide setup key':'Show setup key'} aria-pressed={showSetupKey}><Icon name={showSetupKey?'eyeOff':'eye'}/></button></div></div>}
+          {setupStatusError&&<div className="setup-status-warning" role="alert">Could not verify setup status. Check the database connection; the server will only create a Master if one does not already exist.</div>}
+          {error&&<div className="error-box">{error}</div>}
+          <button className="btn primary wide" disabled={busy}>{busy?'Please wait...':setup?'Create master account':'Sign in'} <Icon name="chevron"/></button>
+          {!setup&&setupAvailable&&<button type="button" className="ghost-link" onClick={()=>setSetup(true)}>First time here? Set up the master account</button>}
+          {setup&&<button type="button" className="ghost-link" onClick={()=>setSetup(false)}>Back to sign in</button>}
+        </form>
+        <div className="login-panel-footer">© {new Date().getFullYear()} Zotrix Research Private Ltd <span/> Private and secure</div>
+      </div>
+    </section>
+  </main>
 }
 
 function Icon({name}){
